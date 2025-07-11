@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Extraction Web App</title>
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-bg: #111216;
+            --secondary-bg: #181a20;
+            --accent: #fff;
+            --accent2: #1e88e5;
+            --input-bg: #23242a;
+            --input-border: #333;
+            --button-bg: #1e88e5;
+            --button-hover: #1565c0;
+            --alert-bg: #e53935;
+            --alert-color: #fff;
+            --card-radius: 14px;
+            --shadow: 0 2px 16px rgba(0,0,0,0.25);
+        }
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background: var(--primary-bg);
+            color: var(--accent);
+            font-family: 'Roboto', sans-serif;
+        }
+        .container {
+            max-width: 420px;
+            margin: 48px auto;
+            background: var(--secondary-bg);
+            border-radius: var(--card-radius);
+            box-shadow: var(--shadow);
+            padding: 36px 28px 28px 28px;
+            position: relative;
+        }
+        h2 {
+            text-align: center;
+            color: var(--accent);
+            margin-bottom: 28px;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+        input[type="text"] {
+            padding: 12px;
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 7px;
+            font-size: 17px;
+            color: var(--accent);
+            outline: none;
+            transition: border 0.2s;
+        }
+        input[type="text"]:focus {
+            border: 1.5px solid var(--accent2);
+        }
+        button {
+            padding: 12px;
+            background: var(--button-bg);
+            color: var(--accent);
+            border: none;
+            border-radius: 7px;
+            font-size: 17px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            box-shadow: 0 1px 4px rgba(30,136,229,0.08);
+        }
+        button:hover, button:focus {
+            background: var(--button-hover);
+            transform: translateY(-2px) scale(1.03);
+        }
+        .image-section {
+            margin-top: 28px;
+            text-align: center;
+        }
+        .image-section img {
+            max-width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+            background: #222;
+            border: 2px solid #23242a;
+        }
+        .actions {
+            margin-top: 16px;
+            display: flex;
+            justify-content: center;
+            gap: 18px;
+        }
+        .alert {
+            margin-bottom: 18px;
+            padding: 12px;
+            border-radius: 7px;
+            color: var(--alert-color);
+            background: var(--alert-bg);
+            text-align: center;
+            font-size: 15px;
+        }
+        #share-info {
+            background: #181a20;
+            color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 1px 8px rgba(30,136,229,0.08);
+            margin-top: 18px;
+            padding: 18px 10px 14px 10px;
+            border: 1px solid #23242a;
+            animation: fadeIn 0.4s;
+        }
+        #share-link {
+            background: #23242a;
+            color: #fff;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 7px;
+            width: 90%;
+            font-size: 15px;
+        }
+        select {
+            background: #23242a;
+            color: #fff;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 8px;
+            font-size: 15px;
+        }
+        label {
+            color: #bbb;
+            font-size: 14px;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: none; }
+        }
+        ::selection {
+            background: #1e88e5;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Image Extraction Web App</h2>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+        <form method="POST" id="id-form">
+            <input type="text" name="user_id" placeholder="Enter ID" required autocomplete="off">
+            <button type="submit">Get Image</button>
+        </form>
+        {% if image_url %}
+        <div class="image-section">
+            <img src="{{ image_url }}" alt="Fetched Image" style="pointer-events:none; user-drag:none; -webkit-user-drag:none;" oncontextmenu="return false;">
+            <div class="actions">
+                <button type="button" onclick="showShareInfo()">Share</button>
+            </div>
+            <div id="share-info" style="display:none; margin-top:16px; text-align:center;">
+                <div>
+                    <div style="font-weight:600; font-size:16px; margin-bottom:8px;">Shareable Link</div>
+                    <input type="text" id="share-link" value="{{ request.url_root }}image/{{ image_token }}" readonly>
+                    <div style="margin:10px 0;">
+                        <label for="expiry-select">Link expires in:</label>
+                        <select id="expiry-select" onchange="updateExpiryInfo()">
+                            <option value="120">2 minutes</option>
+                            <option value="600">10 minutes</option>
+                            <option value="1800">30 minutes</option>
+                            <option value="3600">1 hour</option>
+                            <option value="18000" selected>5 hours</option>
+                            <option value="21600">6 hours</option>
+                            <option value="43200">12 hours</option>
+                            <option value="86400">1 day</option>
+                        </select>
+                    </div>
+                    <div id="expiry-info"></div>
+                    <button onclick="copyShareLink()" style="margin-top:8px; background:#23242a; color:#fff; border:1px solid #1e88e5;">Copy Link</button>
+                </div>
+            </div>
+        </div>
+        <script>
+            function showShareInfo() {
+                document.getElementById('share-info').style.display = 'block';
+                updateExpiryInfo();
+            }
+            function updateExpiryInfo() {
+                var expirySelect = document.getElementById('expiry-select');
+                var expirySeconds = parseInt(expirySelect.value);
+                var expiryText = formatExpiry(expirySeconds);
+                document.getElementById('expiry-info').innerHTML = '<b>Link will expire in:</b> ' + expiryText + ' <button onclick="setExpiry()" style="margin-left:10px; background:#23242a; color:#fff; border:1px solid #1e88e5;">Set</button>';
+            }
+            function formatExpiry(seconds) {
+                if (seconds < 3600) {
+                    return Math.round(seconds/60) + ' minutes';
+                } else if (seconds < 86400) {
+                    return Math.round(seconds/3600) + ' hours';
+                } else {
+                    return Math.round(seconds/86400) + ' day';
+                }
+            }
+            function copyShareLink() {
+                var link = document.getElementById('share-link');
+                link.select();
+                link.setSelectionRange(0, 99999);
+                document.execCommand('copy');
+                alert('Link copied to clipboard!');
+            }
+            function setExpiry() {
+                var expirySelect = document.getElementById('expiry-select');
+                var expirySeconds = parseInt(expirySelect.value);
+                fetch('{{ url_for('set_expiry', token=image_token) }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ expiry: expirySeconds })
+                }).then(res => res.json()).then(data => {
+                    if (data.success) {
+                        alert('Expiry updated!');
+                    } else {
+                        alert('Failed to update expiry.');
+                    }
+                });
+            }
+            // Disable right-click and common dev tools shortcuts
+            document.addEventListener('contextmenu', event => event.preventDefault());
+            document.onkeydown = function(e) {
+                if (
+                    e.key === 'F12' ||
+                    (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
+                    (e.ctrlKey && e.key === 'U')
+                ) {
+                    e.preventDefault();
+                    return false;
+                }
+            };
+        </script>
+        {% endif %}
+    </div>
+    <script>
+        // Disable right-click and dev tools globally
+        document.addEventListener('contextmenu', event => event.preventDefault());
+        document.onkeydown = function(e) {
+            if (
+                e.key === 'F12' ||
+                (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
+                (e.ctrlKey && e.key === 'U')
+            ) {
+                e.preventDefault();
+                return false;
+            }
+        };
+    </script>
+</body>
+</html> 
