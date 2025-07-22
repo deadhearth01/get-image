@@ -13,17 +13,24 @@ app.secret_key = 'supersecretkey'  # Needed for flash messages and session
 temp_dir = 'static/temp_images'
 os.makedirs(temp_dir, exist_ok=True)
 
+# Global in-memory store for image tokens
+image_tokens = {}
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
     image_url = None
     image_token = None
     if request.method == 'POST':
         user_id = request.form.get('user_id')
+        user_type = request.form.get('user_type', 'student')
         expiry = 18000  # default 5 hours
         if not user_id:
             flash('Please enter an ID.', 'danger')
             return render_template('index.html')
-        image_url_remote = f"https://doeresults.gitam.edu/photo/img.aspx?id={user_id}"
+        if user_type == 'faculty':
+            image_url_remote = f"https://gstaff.gitam.edu/img1.aspx?empid={user_id}"
+        else:
+            image_url_remote = f"https://doeresults.gitam.edu/photo/img.aspx?id={user_id}"
         response = requests.get(image_url_remote)
         if response.status_code == 200:
             try:
@@ -33,14 +40,11 @@ def index():
                 image_filename = f"{image_token}.jpeg"
                 image_path = os.path.join(temp_dir, image_filename)
                 img.save(image_path, "JPEG")
-                # Store the mapping and expiry in the session
-                if 'images' not in session:
-                    session['images'] = {}
-                session['images'][image_token] = {
+                # Store the mapping and expiry in the global store
+                image_tokens[image_token] = {
                     'filename': image_filename,
                     'expires_at': time.time() + expiry
                 }
-                session.modified = True
                 return render_template('index.html', image_url=url_for('get_image', token=image_token), image_token=image_token)
             except Exception as e:
                 flash('Failed to process image.', 'danger')
@@ -50,8 +54,7 @@ def index():
 
 
 def _get_image_info(token):
-    images = session.get('images', {})
-    info = images.get(token)
+    info = image_tokens.get(token)
     if not info:
         return None, 'Image not found or access denied.'
     if time.time() > info['expires_at']:
@@ -81,13 +84,11 @@ def download_image(token):
 def set_expiry(token):
     data = request.get_json()
     expiry = int(data.get('expiry', 600))
-    images = session.get('images', {})
-    info = images.get(token)
+    info = image_tokens.get(token)
     if not info:
         return jsonify({'success': False, 'error': 'Image not found'}), 404
     info['expires_at'] = time.time() + expiry
-    session['images'][token] = info
-    session.modified = True
+    image_tokens[token] = info
     return jsonify({'success': True})
 
 if __name__ == '__main__':

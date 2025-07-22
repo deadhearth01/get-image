@@ -156,6 +156,10 @@
           {% endif %}
         {% endwith %}
         <form method="POST" id="id-form">
+            <select name="user_type" id="user_type" required style="margin-bottom: 10px;">
+                <option value="student" selected>Student</option>
+                <option value="faculty">Faculty</option>
+            </select>
             <input type="text" name="user_id" placeholder="Enter ID" required autocomplete="off">
             <button type="submit">Get Image</button>
         </form>
